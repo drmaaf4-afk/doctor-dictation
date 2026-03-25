@@ -39,11 +39,7 @@ export default function RecordPage() {
   }, [audioURL])
 
   function getSupportedMimeType() {
-    const types = [
-      'audio/mp4',
-      'audio/webm;codecs=opus',
-      'audio/webm',
-    ]
+    const types = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm']
 
     for (const type of types) {
       if (
@@ -83,9 +79,8 @@ export default function RecordPage() {
       }
 
       mediaRecorder.onstop = () => {
-        const finalMimeType = mediaRecorder.mimeType || mimeType || 'audio/mp4'
         const blob = new Blob(chunksRef.current, {
-          type: finalMimeType || 'audio/mp4',
+          type: 'audio/mp4',
         })
 
         const localUrl = URL.createObjectURL(blob)
@@ -124,13 +119,12 @@ export default function RecordPage() {
         return
       }
 
-      const extension = audioBlob.type.includes('mp4') ? 'mp4' : 'webm'
-      const fileName = `recordings/${Date.now()}.${extension}`
+      const fileName = `recordings/${Date.now()}.mp4`
 
       const { error: uploadError } = await supabase.storage
         .from('audio-files')
         .upload(fileName, audioBlob, {
-          contentType: audioBlob.type || `audio/${extension}`,
+          contentType: 'audio/mp4',
         })
 
       if (uploadError) {
