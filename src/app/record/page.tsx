@@ -123,6 +123,7 @@ export default function RecordPage() {
 
       const fileName = `recordings/${Date.now()}.mp4`
 
+      // ✅ Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('audio-files')
         .upload(fileName, audioBlob, {
@@ -130,10 +131,14 @@ export default function RecordPage() {
         })
 
       if (uploadError) {
-        setMessage(uploadError.message)
+        console.log('UPLOAD ERROR:', uploadError)
+        setMessage('Upload error: ' + uploadError.message)
         return
       }
 
+      console.log('UPLOAD SUCCESS:', fileName)
+
+      // ✅ Insert into database
       const { error: dbError } = await supabase
         .from('recordings')
         .insert([
@@ -145,12 +150,15 @@ export default function RecordPage() {
         ])
 
       if (dbError) {
-        setMessage(dbError.message)
+        console.log('DB ERROR:', dbError)
+        setMessage('Database error: ' + dbError.message)
         return
       }
 
+      console.log('DB SUCCESS')
       setMessage('Audio uploaded and saved successfully ✅')
     } catch (error) {
+      console.log('GENERAL ERROR:', error)
       setMessage('Upload failed')
     }
   }
