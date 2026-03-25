@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
@@ -26,7 +28,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{textAlign:'center', marginTop:'100px'}}>
+    <div style={{ textAlign: 'center', marginTop: '100px' }}>
       <h1>Dashboard</h1>
 
       {user && (
@@ -36,7 +38,7 @@ export default function Dashboard() {
         </>
       )}
 
-      <button onClick={logout} style={{marginTop:'20px'}}>
+      <button onClick={logout} style={{ marginTop: '20px' }}>
         Logout
       </button>
     </div>
