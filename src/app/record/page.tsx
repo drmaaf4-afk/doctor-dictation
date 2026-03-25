@@ -6,11 +6,13 @@ import { supabase } from '../../lib/supabase'
 export default function RecordPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [audioURL, setAudioURL] = useState('')
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [message, setMessage] = useState('')
   const [userEmail, setUserEmail] = useState('')
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const streamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
     async function getUser() {
@@ -25,14 +27,50 @@ export default function RecordPage() {
     }
 
     getUser()
-  }, [])
+
+    return () => {
+      if (audioURL) {
+        URL.revokeObjectURL(audioURL)
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+      }
+    }
+  }, [audioURL])
+
+  function getSupportedMimeType() {
+    const types = [
+      'audio/mp4',
+      'audio/webm;codecs=opus',
+      'audio/webm',
+    ]
+
+    for (const type of types) {
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
+        return type
+      }
+    }
+
+    return ''
+  }
 
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
+      streamRef.current = stream
+
+      const mimeType = getSupportedMimeType()
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
 
       chunksRef.current = []
+      setAudioBlob(null)
+
+      if (audioURL) {
+        URL.revokeObjectURL(audioURL)
+        setAudioURL('')
+      }
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -41,9 +79,13 @@ export default function RecordPage() {
       }
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        const url = URL.createObjectURL(audioBlob)
+        const finalMimeType = mediaRecorder.mimeType || mimeType || 'audio/mp4'
+        const blob = new Blob(chunksRef.current, { type: finalMimeType })
+        const url = URL.createObjectURL(blob)
+
+        setAudioBlob(blob)
         setAudioURL(url)
+        setMessage('Recording stopped')
       }
 
       mediaRecorderRef.current = mediaRecorder
@@ -59,24 +101,28 @@ export default function RecordPage() {
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop()
       setIsRecording(false)
-      setMessage('Recording stopped')
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
     }
   }
 
   async function uploadAudio() {
     try {
-      if (chunksRef.current.length === 0) {
+      if (!audioBlob) {
         setMessage('No audio to upload')
         return
       }
 
-      const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
-      const fileName = `recordings/${Date.now()}.webm`
+      const extension = audioBlob.type.includes('mp4') ? 'mp4' : 'webm'
+      const fileName = `recordings/${Date.now()}.${extension}`
 
       const { error } = await supabase.storage
         .from('audio-files')
         .upload(fileName, audioBlob, {
-          contentType: 'audio/webm',
+          contentType: audioBlob.type || `audio/${extension}`,
         })
 
       if (error) {
