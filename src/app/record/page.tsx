@@ -29,7 +29,7 @@ export default function RecordPage() {
     getUser()
 
     return () => {
-      if (audioURL) {
+      if (audioURL.startsWith('blob:')) {
         URL.revokeObjectURL(audioURL)
       }
       if (streamRef.current) {
@@ -46,7 +46,10 @@ export default function RecordPage() {
     ]
 
     for (const type of types) {
-      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
+      if (
+        typeof MediaRecorder !== 'undefined' &&
+        MediaRecorder.isTypeSupported(type)
+      ) {
         return type
       }
     }
@@ -60,6 +63,7 @@ export default function RecordPage() {
       streamRef.current = stream
 
       const mimeType = getSupportedMimeType()
+
       const mediaRecorder = mimeType
         ? new MediaRecorder(stream, { mimeType })
         : new MediaRecorder(stream)
@@ -67,10 +71,10 @@ export default function RecordPage() {
       chunksRef.current = []
       setAudioBlob(null)
 
-      if (audioURL) {
+      if (audioURL.startsWith('blob:')) {
         URL.revokeObjectURL(audioURL)
-        setAudioURL('')
       }
+      setAudioURL('')
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -80,11 +84,14 @@ export default function RecordPage() {
 
       mediaRecorder.onstop = () => {
         const finalMimeType = mediaRecorder.mimeType || mimeType || 'audio/mp4'
-        const blob = new Blob(chunksRef.current, { type: finalMimeType })
-        const url = URL.createObjectURL(blob)
+        const blob = new Blob(chunksRef.current, {
+          type: finalMimeType || 'audio/mp4',
+        })
+
+        const localUrl = URL.createObjectURL(blob)
 
         setAudioBlob(blob)
-        setAudioURL(url)
+        setAudioURL(localUrl)
         setMessage('Recording stopped')
       }
 
@@ -98,15 +105,16 @@ export default function RecordPage() {
   }
 
   function stopRecording() {
-    if (mediaRecorderRef.current) {
+    if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop()
-      setIsRecording(false)
     }
 
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
+
+    setIsRecording(false)
   }
 
   async function uploadAudio() {
@@ -119,17 +127,18 @@ export default function RecordPage() {
       const extension = audioBlob.type.includes('mp4') ? 'mp4' : 'webm'
       const fileName = `recordings/${Date.now()}.${extension}`
 
-      const { error } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('audio-files')
         .upload(fileName, audioBlob, {
           contentType: audioBlob.type || `audio/${extension}`,
         })
 
-      if (error) {
-        setMessage(error.message)
-      } else {
-        setMessage('Audio uploaded successfully ✅')
+      if (uploadError) {
+        setMessage(uploadError.message)
+        return
       }
+
+      setMessage('Audio uploaded successfully ✅')
     } catch (error) {
       setMessage('Upload failed')
     }
@@ -143,13 +152,15 @@ export default function RecordPage() {
         justifyContent: 'center',
         alignItems: 'center',
         fontFamily: 'Arial',
+        padding: 16,
       }}
     >
       <div
         style={{
-          width: 360,
+          width: '100%',
+          maxWidth: 360,
           background: 'white',
-          padding: 30,
+          padding: 24,
           borderRadius: 12,
           boxShadow: '0 0 10px rgba(0,0,0,0.1)',
           textAlign: 'center',
@@ -161,14 +172,14 @@ export default function RecordPage() {
         {!isRecording ? (
           <button
             onClick={startRecording}
-            style={{ width: '100%', padding: 10, marginBottom: 10 }}
+            style={{ width: '100%', padding: 12, marginBottom: 10 }}
           >
             Start Recording
           </button>
         ) : (
           <button
             onClick={stopRecording}
-            style={{ width: '100%', padding: 10, marginBottom: 10 }}
+            style={{ width: '100%', padding: 12, marginBottom: 10 }}
           >
             Stop Recording
           </button>
@@ -178,12 +189,13 @@ export default function RecordPage() {
           <>
             <audio
               controls
+              playsInline
               src={audioURL}
               style={{ width: '100%', marginBottom: 10 }}
             />
             <button
               onClick={uploadAudio}
-              style={{ width: '100%', padding: 10 }}
+              style={{ width: '100%', padding: 12 }}
             >
               Upload Audio
             </button>
