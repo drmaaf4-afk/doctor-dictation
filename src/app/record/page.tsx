@@ -15,10 +15,12 @@ export default function RecordPage() {
   useEffect(() => {
     async function getUser() {
       const { data } = await supabase.auth.getUser()
+
       if (!data.user) {
         window.location.href = '/login'
         return
       }
+
       setUserEmail(data.user.email || '')
     }
 
@@ -63,7 +65,7 @@ export default function RecordPage() {
 
   async function uploadAudio() {
     try {
-      if (!audioURL || chunksRef.current.length === 0) {
+      if (chunksRef.current.length === 0) {
         setMessage('No audio to upload')
         return
       }
@@ -111,19 +113,32 @@ export default function RecordPage() {
         <p>{userEmail}</p>
 
         {!isRecording ? (
-          <button onClick={startRecording} style={{ width: '100%', padding: 10, marginBottom: 10 }}>
+          <button
+            onClick={startRecording}
+            style={{ width: '100%', padding: 10, marginBottom: 10 }}
+          >
             Start Recording
           </button>
         ) : (
-          <button onClick={stopRecording} style={{ width: '100%', padding: 10, marginBottom: 10 }}>
+          <button
+            onClick={stopRecording}
+            style={{ width: '100%', padding: 10, marginBottom: 10 }}
+          >
             Stop Recording
           </button>
         )}
 
         {audioURL && (
           <>
-            <audio controls src={audioURL} style={{ width: '100%', marginBottom: 10 }} />
-            <button onClick={uploadAudio} style={{ width: '100%', padding: 10 }}>
+            <audio
+              controls
+              src={audioURL}
+              style={{ width: '100%', marginBottom: 10 }}
+            />
+            <button
+              onClick={uploadAudio}
+              style={{ width: '100%', padding: 10 }}
+            >
               Upload Audio
             </button>
           </>
