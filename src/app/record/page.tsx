@@ -134,7 +134,22 @@ export default function RecordPage() {
         return
       }
 
-      setMessage('Audio uploaded successfully ✅')
+      const { error: dbError } = await supabase
+        .from('recordings')
+        .insert([
+          {
+            user_email: userEmail,
+            file_path: fileName,
+            status: 'uploaded',
+          },
+        ])
+
+      if (dbError) {
+        setMessage(dbError.message)
+        return
+      }
+
+      setMessage('Audio uploaded and saved successfully ✅')
     } catch (error) {
       setMessage('Upload failed')
     }
