@@ -18,6 +18,9 @@ export default function LoginPage() {
       setMessage(error.message)
     } else {
       setMessage('Login successful ✅')
+
+      // 🔥 Redirect to dashboard
+      window.location.href = '/dashboard'
     }
   }
 
